@@ -1,0 +1,108 @@
+# Kotlin YouTube Extractor
+## Android Library for extract YouTube Stream URL
+
+[![Release](https://jitpack.io/v/maxrave-dev/kotlin-youtubeExtractor.svg)](https://jitpack.io/#maxrave-dev/kotlin-youtubeExtractor)
+
+A lightweight Android (Kotlin) library for extract YouTube streaming URL. Port from [HaarigerHarald/android-youtubeExtractor (Java)](https://github.com/HaarigerHarald/android-youtubeExtractor) to Kotlin.
+
+## Features
+
+- Get YouTube stream Url with all format and itag
+- Using Kotlin Coroutines for best performance
+## Using in your project
+### Gradle
+
+Add Jitpack.io to your setting.gradle file:
+
+```kotlin
+pluginManagement {
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        ...
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+Then, add dependencies in app level build.gradle:
+
+```kotlin
+dependencies {
+    implementation 'com.github.HaarigerHarald:android-youtubeExtractor:0.0.1'
+}
+```
+
+## How to use
+
+### Using with Kotlin Coroutines
+
+Before start please add Kotlin Coroutines to your project
+```kotlin
+scope.launch {
+            val ytFiles = YTExtractor(context).getYtFile(videoId)
+            var streamUrl = ytFiles[251].url
+        }
+```
+In above case, ytFiles is a map of available media files for one YouTube video, accessible by their itag value (in above code "251" is a audio itag).
+
+List Itag and Format in this library:
+| Itag | Format | Extension | Resolution | Video Codec | Audio Codec | Bitrate | Dash | HLS Live Stream | AUDIO ONLY |
+|------|--------|-----------|------------|-------------|-------------|---------|------|----------------|------------|
+| 17   | 3gp    | 144       |            | MPEG4       | AAC         | 24      |      |                |            |
+| 36   | 3gp    | 240       |            | MPEG4       | AAC         | 32      |      |                |            |
+| 5    | flv    | 240       |            | H263        | MP3         | 64      |      |                |            |
+| 43   | webm   | 360       |            | VP8         | VORBIS      | 128     |      |                |            |
+| 18   | mp4    | 360       |            | H264        | AAC         | 96      |      |                |            |
+| 22   | mp4    | 720       |            | H264        | AAC         | 192     |      |                |            |
+| 160  | mp4    | 144       |            | H264        |             |         | true |                |            |
+| 133  | mp4    | 240       |            | H264        |             |         | true |                |            |
+| 134  | mp4    | 360       |            | H264        |             |         | true |                |            |
+| 135  | mp4    | 480       |            | H264        |             |         | true |                |            |
+| 136  | mp4    | 720       |            | H264        |             |         | true |                |            |
+| 137  | mp4    | 1080      |            | H264        |             |         | true |                |            |
+| 264  | mp4    | 1440      |            | H264        |             |         | true |                |            |
+| 266  | mp4    | 2160      |            | H264        |             |         | true |                |            |
+| 298  | mp4    | 720       |            | H264        |             | 60      | true |                |            |
+| 299  | mp4    | 1080      |            | H264        |             | 60      | true |                |            |
+| 140  | m4a    |           |            |             | AAC         | 128     | true |                | true       |
+| 141  | m4a    |           |            |             | AAC         | 256     | true |                | true       |
+| 256  | m4a    |           |            |             | AAC         | 192     | true |                | true       |
+| 258  | m4a    |           |            |             | AAC         | 384     | true |                | true       |
+| 278  | webm   | 144       |            | VP9         |             |         | true |                |            |
+| 242  | webm   | 240       |            | VP9         |             |         | true |                |            |
+| 243  | webm   | 360       |            | VP9         |             |         | true |                |            |
+| 244  | webm   | 480       |            | VP9         |             |         | true |                |            |
+| 247  | webm   | 720       |            | VP9         |             |         | true |                |            |
+| 248  | webm   | 1080      |            | VP9         |             |         | true |                |            |
+| 271  | webm   | 1440      |            | VP9         |             |         | true |                |            |
+| 313  | webm   | 2160      |            | VP9         |             |         | true |                |            |
+| 302  | webm   | 720       |            | VP9         |             | 60      | true |                |            |
+| 308  | webm   | 1440      |            | VP9         |             | 60      | true |                |            |
+| 303  | webm   | 1080      |            | VP9         |             | 60      | true |                |            |
+| 315  | webm   | 2160      |            | VP9         |             | 60      | true |                |            |
+| 171  | webm   |           |            |             | VORBIS      | 128     | true |                | true       |
+| 249  | webm   |           |            |             | OPUS        | 48      | true |                | true       |
+| 250  | webm   |           |            |             | OPUS        | 64      | true |                | true       |
+| 251  | webm   |           |            |             | OPUS        | 160     | true |                | true       |
+| 91   | mp4    | 144       |            | H264        | AAC         | 48      |      | true           | true       |
+| 92   | mp4    | 240       |            | H264        | AAC         | 48      |      | true           | true       |
+| 93   | mp4    | 360       |            | H264        | AAC         | 128     |      | true           | true       |
+| 94   | mp4    | 480       |            | H264        | AAC         | 128     |      | true           | true       |
+| 95   | mp4    | 720       |            | H264        | AAC         | 256     |      | true           | true       |
+| 96   | mp4    | 1080      |            | H264        | AAC         | 256     |      | true           | true       |
+
+I am trying to add more feature to this library. Keep in touch!!!
+
+## Dependency
+
+- [JsEvaluator](https://github.com/evgenyneu/js-evaluator-for-android) (v6.0.0) - Running Javascript inside Android app
+
+## Donate
+|   ![Paypal](https://upload.wikimedia.org/wikipedia/commons/archive/b/b5/20230314142950%21PayPal.svg)         | paypal.me/maxraveofficial |
+|-------|---------|
