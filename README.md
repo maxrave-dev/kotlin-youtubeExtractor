@@ -1,7 +1,7 @@
 # Kotlin YouTube Extractor
 ## Android Library for extract YouTube Stream URL
 
-[![Release](https://jitpack.io/v/maxrave-dev/kotlin-youtubeExtractor.svg)](https://jitpack.io/#maxrave-dev/kotlin-youtubeExtractor) [![Github All Releases](https://img.shields.io/github/downloads/maxrave-dev/kotlin-youtubeExtractor/total.svg)]()
+[![Release](https://jitpack.io/v/maxrave-dev/kotlin-youtubeExtractor.svg)](https://jitpack.io/#maxrave-dev/kotlin-youtubeExtractor) ![Downloads](https://jitpack.io/v/maxrave-dev/kotlin-youtubeExtractor/month.svg)
 
 
 A lightweight Android (Kotlin) library for extract YouTube streaming URL. Port from [HaarigerHarald/android-youtubeExtractor (Java)](https://github.com/HaarigerHarald/android-youtubeExtractor) to Kotlin.
