@@ -4,7 +4,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
-import com.maxrave.kotlinyoutubeextractor.R
+import com.maxrave.exampleApp.R
 import com.maxrave.kotlinyoutubeextractor.YTExtractor
 import com.maxrave.kotlinyoutubeextractor.bestQuality
 import com.maxrave.kotlinyoutubeextractor.getAudioOnly
