@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace 'com.maxrave.kotlinyoutubeextractor'
+    namespace 'com.maxrave.exampleApp'
     compileSdk 33
 
     defaultConfig {
