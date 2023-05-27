@@ -35,7 +35,7 @@ Then, add dependencies in app level build.gradle:
 
 ```kotlin
 dependencies {
-    implementation 'com.github.HaarigerHarald:android-youtubeExtractor:0.0.1'
+    implementation 'com.github.HaarigerHarald:android-youtubeExtractor:0.0.2'
 }
 ```
 
@@ -44,15 +44,43 @@ dependencies {
 ### Using with Kotlin Coroutines
 
 Before start please add Kotlin Coroutines to your project
+
+Call YTExtractor inside your activity or fragment
 ```kotlin
-scope.launch {
+//If your YouTube link is "https://www.youtube.com/watch?v=IDwytT0wFRM" so this videoId is "IDwytT0wFRM"
+var videoId = "IDwytT0wFRM"
+GlobalScope.launch {
             val ytFiles = YTExtractor(context).getYtFile(videoId)
             var streamUrl = ytFiles[251].url
         }
 ```
 In above case, ytFiles is a map of available media files for one YouTube video, accessible by their itag value (in above code "251" is a audio itag).
 
-List Itag and Format in this library:
+#### Filter
+To get list of only video YtFile or only audio, you can call this function
+```kotlin
+GlobalScope.launch {
+            val ytFiles = YTExtractor(context).getYtFile(videoId)
+            val videoYtFiles = ytFiles.getAudioOnly() // Return ArrayList<YtFile> of only video
+            val audioYtFiles = ytFiles.getVideoOnly() // Return ArrayList<YtFile> of only audio
+        }
+```
+To get best quality of video or audio, you can call this function
+```kotlin
+GlobalScope.launch {
+            val ytFiles = YTExtractor(context).getYtFile(videoId)
+            val videoYtFiles = ytFiles.getAudioOnly()?.bestQuality() // Return best quality video
+            val audioYtFiles = ytFiles.getVideoOnly()?.bestQuality() // Return best quality audio
+        }
+```
+
+## Not working?
+If you have any problem with this library, please create an issue.
+In my case:
+- Can't get 1080p video with audio, you need to merge video and audio by yourself
+
+## List Itag and Format in this library:
+
 | Itag | Format | Extension | Resolution | Video Codec | Audio Codec | Bitrate | Dash | HLS Live Stream | AUDIO ONLY |
 |------|--------|-----------|------------|-------------|-------------|---------|------|----------------|------------|
 | 17   | 3gp    | 144       |            | MPEG4       | AAC         | 24      |      |                |            |
