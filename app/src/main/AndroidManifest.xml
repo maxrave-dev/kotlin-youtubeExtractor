@@ -14,7 +14,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.KotlinYoutubeExtractor"
+        android:theme="@style/Theme.ExampleApp"
         tools:targetApi="31">
         <activity
             android:name="com.maxrave.exampleApp.ui.MainActivity"
