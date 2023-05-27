@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
+import androidx.core.util.forEach
 import com.evgenii.jsevaluator.JsEvaluator
 import com.evgenii.jsevaluator.interfaces.JsCallback
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -29,6 +30,11 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import java.util.regex.Pattern
+
+/**
+ * @author maxrave-dev
+ * A lightweight Android (Kotlin) library for extract YouTube streaming URL.
+ */
 
 class YTExtractor(val con: Context) {
     @OptIn(DelicateCoroutinesApi::class)
@@ -56,8 +62,8 @@ class YTExtractor(val con: Context) {
     private val lock: Lock = ReentrantLock()
     private val jsExecuting = lock.newCondition()
 
-    private val USER_AGENT =
-        "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.98 Safari/537.36"
+    private val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+    //Old User Agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.98 Safari/537.36"
 
     private val patYouTubePageLink =
         Pattern.compile("(http|https)://(www\\.|m.|)youtube\\.com/watch\\?v=(.+?)( |\\z|&)")
@@ -102,9 +108,8 @@ class YTExtractor(val con: Context) {
             Format(22, "mp4", 720, Format.VCodec.H264, Format.ACodec.AAC, 192, false)
         )
 
-        // Dash Video
 
-        // Dash Video
+        // Dash Video (no audio)
         FORMAT_MAP.put(160, Format(160, "mp4", 144, Format.VCodec.H264, Format.ACodec.NONE, true))
         FORMAT_MAP.put(133, Format(133, "mp4", 240, Format.VCodec.H264, Format.ACodec.NONE, true))
         FORMAT_MAP.put(134, Format(134, "mp4", 360, Format.VCodec.H264, Format.ACodec.NONE, true))
@@ -133,7 +138,7 @@ class YTExtractor(val con: Context) {
 
         // WEBM Dash Video
 
-        // WEBM Dash Video
+        // WEBM Dash Video (no audio)
         FORMAT_MAP.put(278, Format(278, "webm", 144, Format.VCodec.VP9, Format.ACodec.NONE, true))
         FORMAT_MAP.put(242, Format(242, "webm", 240, Format.VCodec.VP9, Format.ACodec.NONE, true))
         FORMAT_MAP.put(243, Format(243, "webm", 360, Format.VCodec.VP9, Format.ACodec.NONE, true))
@@ -358,7 +363,7 @@ class YTExtractor(val con: Context) {
     private fun decipherSignature(encSignatures: SparseArray<String>): Boolean {
         // Assume the functions don't change that much
         if (decipherFunctionName == null || decipherFunctions == null) {
-            val decipherFunctUrl = "https://youtube.com" + decipherJsFileName
+            val decipherFunctUrl = "https://youtube.com$decipherJsFileName"
             var reader: BufferedReader? = null
             val javascriptFile: String
             val url = URL(decipherFunctUrl)
@@ -578,18 +583,25 @@ class YTExtractor(val con: Context) {
             }
         }
     }
+    /**
+     * Return a sparse array of available YtFiles in different formats
+     * Using Kotlin Coroutines to call this function
+     * To get specify YtFile use .get(itag) function
+     * @param videoId YouTube videoId
+     * @return SparseArray YtFile
+     */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun getYtFile(ytUrl: String): SparseArray<YtFile>?{
+    suspend fun getYtFile(videoId: String): SparseArray<YtFile>?{
         return scope.async {
-            var mat = patYouTubePageLink.matcher(ytUrl)
+            var mat = patYouTubePageLink.matcher(videoId)
             if (mat.find()) {
                 videoID = mat.group(3)
             } else {
-                mat = patYouTubeShortLink.matcher(ytUrl)
+                mat = patYouTubeShortLink.matcher(videoId)
                 if (mat.find()) {
                     videoID = mat.group(3)
-                } else if (ytUrl.matches("\\p{Graph}+?".toRegex())) {
-                    videoID = ytUrl
+                } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
+                    videoID = videoId
                 }
             }
             if (videoID != null) {
@@ -605,16 +617,43 @@ class YTExtractor(val con: Context) {
         }.await()
     }
 }
+
+/**
+ * @return a list (ArrayList) of audio only YtFile objects
+ */
 fun SparseArray<YtFile>.getAudioOnly(): ArrayList<YtFile> {
     val resultList: ArrayList<YtFile> = ArrayList()
-    val listAudioItag = listOf<Int>(251,140,250)
+    val listAudioItag = listOf<Int>(171,249,250,251)
     for (itag in listAudioItag) {
         if (this[itag] != null) {
             resultList.add(this[itag])
-            break
         }
     }
     return resultList
+}
+/**
+ * @return a list (ArrayList) of video YtFile objects
+ */
+fun SparseArray<YtFile>.getVideoOnly(): ArrayList<YtFile> {
+    val resultList: ArrayList<YtFile> = ArrayList()
+    val listVideoItag = listOf<Int>(18,22,37,38,82,83,84,85,133,134,135,136,137,138,160,242,243,244,247,248,264,266,271,272,278,298,299,302,303,308,313,315,330,331,332,333,334,335,336,337,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410)
+    for (itag in listVideoItag) {
+        if (this[itag] != null) {
+            resultList.add(this[itag])
+        }
+    }
+    return resultList
+}
+/**
+ * Convert SparseArray to ArrayList
+ * @return a list (ArrayList) of video and audio YtFile objects
+ */
+fun <T> SparseArray<T>.values(): ArrayList<T> {
+    val list = ArrayList<T>()
+    forEach { _, value ->
+        list.add(value)
+    }
+    return list
 }
 fun ArrayList<YtFile>.bestQuality(): YtFile?{
     return this.maxByOrNull { it.meta!!.audioBitrate }
