@@ -1,4 +1,4 @@
-package com.maxrave.kotlinyoutubeextractor.ui
+package com.maxrave.exampleApp.ui
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle

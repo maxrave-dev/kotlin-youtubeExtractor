@@ -8,7 +8,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.maxrave.kotlinyoutubeextractor"
+        applicationId "com.maxrave.exampleApp"
         minSdk 24
         targetSdk 33
         versionCode 1
