@@ -10,15 +10,14 @@ android {
     namespace 'com.maxrave.kotlinyoutubeextractor'
     compileSdk 33
 
-//    defaultConfig {
-//        applicationId "com.maxrave.kotlinyoutubeextractor"
-//        minSdk 24
-//        targetSdk 33
-//        versionCode 1
-//        versionName "1.0"
-//
-//        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-//    }
+    defaultConfig {
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
 
     buildTypes {
         release {
