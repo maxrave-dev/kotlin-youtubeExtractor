@@ -9,6 +9,7 @@ A lightweight Android (Kotlin) library for extract YouTube streaming URL. Port f
 ## Features
 
 - Get YouTube stream Url with all format and itag
+- Get YouTube video metadata
 - Using Kotlin Coroutines for best performance
 ## Using in your project
 ### Gradle
@@ -35,13 +36,14 @@ Then, add dependencies in app level build.gradle:
 
 ```kotlin
 dependencies {
-    implementation 'com.github.HaarigerHarald:android-youtubeExtractor:0.0.2'
+    implementation 'com.github.HaarigerHarald:android-youtubeExtractor:0.0.3'
 }
 ```
 
 ## How to use
 
 ### Using with Kotlin Coroutines
+>From version 0.0.3, this library change extract method and add more feature method.
 
 Before start please add Kotlin Coroutines to your project
 
@@ -49,29 +51,67 @@ Call YTExtractor inside your activity or fragment
 ```kotlin
 //If your YouTube link is "https://www.youtube.com/watch?v=IDwytT0wFRM" so this videoId is "IDwytT0wFRM"
 var videoId = "IDwytT0wFRM"
+val yt = YTExtractor(context)
+var ytFiles: SparseArray<YtFile>? = null
+var videoMeta: VideoMeta? = null
 GlobalScope.launch {
-            val ytFiles = YTExtractor(context).getYtFile(videoId)
-            var streamUrl = ytFiles[251].url
+            yt.extract(videoId)
+            //Before get YtFile or VideoMeta, you need to check state of yt object
+            if (yt.state == State.SUCCESS) {
+                ytFiles = yt.getYtFile()
+                videoMeta = yt.getVideoMeta()
+            }
         }
 ```
-In above case, ytFiles is a map of available media files for one YouTube video, accessible by their itag value (in above code "251" is a audio itag).
+In above case, ytFiles is a map of available media files for one YouTube video, accessible by their itag value (in above code "251" is a audio itag) and videoMeta is an object that contains all metadata of this YouTube video (thumbnail, title, author, views, etc.).
 
+#### YtFile
+After use getYtFile() function, you will get SparseArray<YtFile> object. This object contains all available media files for one YouTube video, accessible by their itag value. You can get YtFile object by itag value like this:
+```kotlin
+var ytFiles = yt.getYtFile()
+var ytFile = ytFiles.get(251) // 251 is itag of audio
+//Get stream URL
+var streamUrl = ytFile?.url
+```
+#### VideoMeta
+After use getVideoMeta() function, you will get VideoMeta object. This object contains all metadata of this YouTube video (thumbnail, title, author, views, etc.). You can get all metadata like this:
+```kotlin
+var videoMeta = yt.getVideoMeta()
+    //title
+    var title = videoMeta?.title
+    //author
+    var author = videoMeta?.author
+    //view count
+    var views = videoMeta?.viewCount
+    //video length in second
+    var videoLength = videoMeta?.videoLength
+    //video channel id
+    var videoChannelId = videoMeta?.channelId
+
+//Get thumbnail
+    // Default resolution
+    val thumbUrl = videoMeta?.thumbUrl
+    // 320 x 180
+    val mqImageUrl = videoMeta?.mqImageUrl
+    // 480 x 360
+    val hqImageUrl = videoMeta?.hqImageUrl
+    // 640 x 480
+    val sdImageUrl = videoMeta?.sdImageUrl
+    // Max Res
+    val maxResImageUrl = videoMeta?.maxResImageUrl
+```
 #### Filter
 To get list of only video YtFile or only audio, you can call this function
 ```kotlin
-GlobalScope.launch {
-            val ytFiles = YTExtractor(context).getYtFile(videoId)
-            val videoYtFiles = ytFiles.getAudioOnly() // Return ArrayList<YtFile> of only video
-            val audioYtFiles = ytFiles.getVideoOnly() // Return ArrayList<YtFile> of only audio
-        }
+    val ytFiles = yt.getYtFile()
+    val videoYtFiles = ytFiles.getAudioOnly() // Return ArrayList<YtFile> of only video
+    val audioYtFiles = ytFiles.getVideoOnly() // Return ArrayList<YtFile> of only audio
 ```
 To get best quality of video or audio, you can call this function
 ```kotlin
-GlobalScope.launch {
-            val ytFiles = YTExtractor(context).getYtFile(videoId)
-            val videoYtFiles = ytFiles.getAudioOnly()?.bestQuality() // Return best quality video
-            val audioYtFiles = ytFiles.getVideoOnly()?.bestQuality() // Return best quality audio
-        }
+    val ytFiles = yt.getYtFile()
+    val videoYtFiles = ytFiles.getAudioOnly()?.bestQuality() // Return best quality video
+    val audioYtFiles = ytFiles.getVideoOnly()?.bestQuality() // Return best quality audio
 ```
 
 ## Not working?

@@ -41,6 +41,9 @@ class YTExtractor(val con: Context) {
     val scope = GlobalScope
     val job = Job()
 
+    var ytFiles: SparseArray<YtFile>? = null
+    var state: State = State.INIT
+
     var CACHING = true
     var LOGGING = false
 
@@ -62,7 +65,8 @@ class YTExtractor(val con: Context) {
     private val lock: Lock = ReentrantLock()
     private val jsExecuting = lock.newCondition()
 
-    private val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
+    private val USER_AGENT =
+        "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
     //Old User Agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.98 Safari/537.36"
 
     private val patYouTubePageLink =
@@ -205,7 +209,6 @@ class YTExtractor(val con: Context) {
             Format(96, "mp4", 1080, Format.VCodec.H264, Format.ACodec.AAC, 256, false, true)
         )
     }
-
 
 
     @Throws(
@@ -359,6 +362,7 @@ class YTExtractor(val con: Context) {
         }
         return ytFiles
     }
+
     @Throws(IOException::class)
     private fun decipherSignature(encSignatures: SparseArray<String>): Boolean {
         // Assume the functions don't change that much
@@ -486,6 +490,7 @@ class YTExtractor(val con: Context) {
         }
         return true
     }
+
     private fun readDecipherFunctFromCache() {
         val cacheFile = File(cacheDirPath + "/" + CACHE_FILE_NAME)
         // The cached functions are valid for 2 weeks
@@ -509,6 +514,7 @@ class YTExtractor(val con: Context) {
             }
         }
     }
+
     private fun decipherViaWebView(encSignatures: SparseArray<String>) {
         val context = refContext!!.get() ?: return
         val stb = StringBuilder(decipherFunctions + " function decipher(")
@@ -551,6 +557,7 @@ class YTExtractor(val con: Context) {
             })
         }
     }
+
     fun setDefaultHttpProtocol(useHttp: Boolean) {}
 
     private fun writeDeciperFunctToChache() {
@@ -583,16 +590,16 @@ class YTExtractor(val con: Context) {
             }
         }
     }
+
     /**
-     * Return a sparse array of available YtFiles in different formats
+     * Extract data from YouTube videoId
      * Using Kotlin Coroutines to call this function
-     * To get specify YtFile use .get(itag) function
      * @param videoId YouTube videoId
-     * @return SparseArray YtFile
      */
     @OptIn(DelicateCoroutinesApi::class)
-    suspend fun getYtFile(videoId: String): SparseArray<YtFile>?{
-        return scope.async {
+    suspend fun extract(videoId: String) {
+        ytFiles = scope.async {
+            state = State.LOADING
             var mat = patYouTubePageLink.matcher(videoId)
             if (mat.find()) {
                 videoID = mat.group(3)
@@ -606,15 +613,36 @@ class YTExtractor(val con: Context) {
             }
             if (videoID != null) {
                 try {
-                    return@async getStreamUrls()!!
+                    state = State.SUCCESS
+                    return@async getStreamUrls()
                 } catch (e: java.lang.Exception) {
+                    state = State.ERROR
                     Log.e(LOG_TAG, "Extraction failed", e)
                 }
             } else {
+                state = State.ERROR
                 Log.e(LOG_TAG, "Wrong YouTube link format")
             }
             return@async null
         }.await()
+    }
+
+    /**
+     * After extract, you can get the video meta data if state is SUCCESS
+     * Please check the state before call this function
+     * @return videoMeta YouTube Video Metadata
+     */
+    fun getVideoMeta(): VideoMeta? {
+        return videoMeta
+    }
+    /**
+     * After extract, you can get the video stream URL data if state is SUCCESS
+     * Please check the state before call this function
+     * To get stream URL, use [.get(itag)]
+     * @return ytFiles SparseArray of YtFile
+     */
+    fun getYTFiles(): SparseArray<YtFile>? {
+        return ytFiles
     }
 }
 
@@ -657,4 +685,12 @@ fun <T> SparseArray<T>.values(): ArrayList<T> {
 }
 fun ArrayList<YtFile>.bestQuality(): YtFile?{
     return this.maxByOrNull { it.meta!!.audioBitrate }
+}
+
+
+enum class State {
+    SUCCESS,
+    ERROR,
+    LOADING,
+    INIT,
 }

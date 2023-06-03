@@ -1,5 +1,8 @@
 package com.maxrave.kotlinyoutubeextractor
 
+/**
+ * VideoMeta contains all the information available for a YouTube video such as title, author, thumbnail, view count, etc.
+ */
 class VideoMeta(
     val videoId: String?, val title: String?, val author: String?, val channelId: String?,
     /**
