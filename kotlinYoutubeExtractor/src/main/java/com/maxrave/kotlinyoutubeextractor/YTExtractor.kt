@@ -590,6 +590,24 @@ class YTExtractor(val con: Context) {
             }
         }
     }
+    fun deleteDir(dir: File?): Boolean {
+        return if (dir != null && dir.isDirectory) {
+            val children = dir.list()
+            if (children != null) {
+                for (i in children.indices) {
+                    val success = deleteDir(File(dir, children[i]))
+                    if (!success) {
+                        return false
+                    }
+                }
+            }
+            dir.delete()
+        } else if (dir != null && dir.isFile) {
+            dir.delete()
+        } else {
+            false
+        }
+    }
 
     /**
      * Extract data from YouTube videoId
@@ -598,6 +616,9 @@ class YTExtractor(val con: Context) {
      */
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun extract(videoId: String) {
+        deleteDir(con.cacheDir)
+        cacheDirPath = null
+        cacheDirPath = con.cacheDir.absolutePath
         ytFiles = scope.async {
             state = State.LOADING
             var mat = patYouTubePageLink.matcher(videoId)
