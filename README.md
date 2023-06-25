@@ -58,7 +58,7 @@ GlobalScope.launch {
             yt.extract(videoId)
             //Before get YtFile or VideoMeta, you need to check state of yt object
             if (yt.state == State.SUCCESS) {
-                ytFiles = yt.getYtFile()
+                ytFiles = yt.getYTFiles()
                 videoMeta = yt.getVideoMeta()
             }
         }
@@ -66,9 +66,9 @@ GlobalScope.launch {
 In above case, ytFiles is a map of available media files for one YouTube video, accessible by their itag value (in above code "251" is a audio itag) and videoMeta is an object that contains all metadata of this YouTube video (thumbnail, title, author, views, etc.).
 
 #### YtFile
-After use getYtFile() function, you will get SparseArray<YtFile> object. This object contains all available media files for one YouTube video, accessible by their itag value. You can get YtFile object by itag value like this:
+After use getYTFiles() function, you will get SparseArray<YtFile> object. This object contains all available media files for one YouTube video, accessible by their itag value. You can get YtFile object by itag value like this:
 ```kotlin
-var ytFiles = yt.getYtFile()
+var ytFiles = yt.getYTFiles()
 var ytFile = ytFiles.get(251) // 251 is itag of audio
 //Get stream URL
 var streamUrl = ytFile?.url
