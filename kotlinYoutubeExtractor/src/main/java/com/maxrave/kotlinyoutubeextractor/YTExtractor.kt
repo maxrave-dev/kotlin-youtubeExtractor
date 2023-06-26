@@ -8,10 +8,15 @@ import android.util.SparseArray
 import androidx.core.util.forEach
 import com.evgenii.jsevaluator.JsEvaluator
 import com.evgenii.jsevaluator.interfaces.JsCallback
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -34,21 +39,18 @@ import java.util.regex.Pattern
 /**
  * @author maxrave-dev
  * A lightweight Android (Kotlin) library for extract YouTube streaming URL.
+ * @param con Context is required for caching the deciphering function.
+ * @param CACHING Enable caching of the deciphering function, default is false. When you extract multiple links, caching is not recommended because Caching will cause HTTP 403 Error.
+ * @param LOGGING Enable logging, default is false.
  */
 
-class YTExtractor(val con: Context) {
-    @OptIn(DelicateCoroutinesApi::class)
-    val scope = GlobalScope
-    val job = Job()
+class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: Boolean = false) {
+    private val LOG_TAG = "Kotlin YouTube Extractor"
+    private val CACHE_FILE_NAME = "decipher_js_funct"
 
     var ytFiles: SparseArray<YtFile>? = null
     var state: State = State.INIT
 
-    var CACHING = true
-    var LOGGING = false
-
-    private val LOG_TAG = "YT Extractor Kotlin"
-    private val CACHE_FILE_NAME = "decipher_js_funct"
 
     private var refContext: WeakReference<Context>? = null
     private var videoID: String? = null
@@ -239,71 +241,77 @@ class YTExtractor(val con: Context) {
         }
         var mat = patPlayerResponse.matcher(pageHtml)
         if (mat.find()) {
-            val ytPlayerResponse = JSONObject(mat.group(1))
-            val streamingData = ytPlayerResponse.getJSONObject("streamingData")
-            val formats = streamingData.getJSONArray("formats")
-            for (i in 0 until formats.length()) {
-                val format = formats.getJSONObject(i)
+            val ytPlayerResponse = mat.group(1)?.let { JSONObject(it) }
+            val streamingData = ytPlayerResponse?.getJSONObject("streamingData")
+            val formats = streamingData?.getJSONArray("formats")
+            if (formats != null) {
+                for (i in 0 until formats.length()) {
+                    val format = formats.getJSONObject(i)
 
-                // FORMAT_STREAM_TYPE_OTF(otf=1) requires downloading the init fragment (adding
-                // `&sq=0` to the URL) and parsing emsg box to determine the number of fragment that
-                // would subsequently requested with (`&sq=N`) (cf. youtube-dl)
-                val type = format.optString("type")
-                if (type != null && type == "FORMAT_STREAM_TYPE_OTF") continue
-                val itag = format.getInt("itag")
-                if (FORMAT_MAP[itag] != null) {
-                    if (format.has("url")) {
-                        val url = format.getString("url").replace("\\u0026", "&")
-                        ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
-                    } else if (format.has("signatureCipher")) {
-                        mat =
-                            patSigEncUrl.matcher(format.getString("signatureCipher"))
-                        val matSig =
-                            patSignature.matcher(format.getString("signatureCipher"))
-                        if (mat.find() && matSig.find()) {
-                            val url = URLDecoder.decode(mat.group(1), "UTF-8")
-                            val signature = URLDecoder.decode(matSig.group(1), "UTF-8")
+                    // FORMAT_STREAM_TYPE_OTF(otf=1) requires downloading the init fragment (adding
+                    // `&sq=0` to the URL) and parsing emsg box to determine the number of fragment that
+                    // would subsequently requested with (`&sq=N`) (cf. youtube-dl)
+                    val type = format.optString("type")
+                    if (type == "FORMAT_STREAM_TYPE_OTF") continue
+                    val itag = format.getInt("itag")
+                    if (FORMAT_MAP[itag] != null) {
+                        if (format.has("url")) {
+                            val url = format.getString("url").replace("\\u0026", "&")
                             ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
-                            encSignatures.append(itag, signature)
+                        } else if (format.has("signatureCipher")) {
+                            mat =
+                                patSigEncUrl.matcher(format.getString("signatureCipher"))
+                            val matSig =
+                                patSignature.matcher(format.getString("signatureCipher"))
+                            if (mat.find() && matSig.find()) {
+                                val url = URLDecoder.decode(mat.group(1), "UTF-8")
+                                val signature = URLDecoder.decode(matSig.group(1), "UTF-8")
+                                ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
+                                encSignatures.append(itag, signature)
+                            }
                         }
                     }
                 }
             }
-            val adaptiveFormats = streamingData.getJSONArray("adaptiveFormats")
-            for (i in 0 until adaptiveFormats.length()) {
-                val adaptiveFormat = adaptiveFormats.getJSONObject(i)
-                val type = adaptiveFormat.optString("type")
-                if (type != null && type == "FORMAT_STREAM_TYPE_OTF") continue
-                val itag = adaptiveFormat.getInt("itag")
-                if (FORMAT_MAP[itag] != null) {
-                    if (adaptiveFormat.has("url")) {
-                        val url = adaptiveFormat.getString("url").replace("\\u0026", "&")
-                        ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
-                    } else if (adaptiveFormat.has("signatureCipher")) {
-                        mat =
-                            patSigEncUrl.matcher(adaptiveFormat.getString("signatureCipher"))
-                        val matSig =
-                            patSignature.matcher(adaptiveFormat.getString("signatureCipher"))
-                        if (mat.find() && matSig.find()) {
-                            val url = URLDecoder.decode(mat.group(1), "UTF-8")
-                            val signature = URLDecoder.decode(matSig.group(1), "UTF-8")
+            val adaptiveFormats = streamingData?.getJSONArray("adaptiveFormats")
+            if (adaptiveFormats != null) {
+                for (i in 0 until adaptiveFormats.length()) {
+                    val adaptiveFormat = adaptiveFormats.getJSONObject(i)
+                    val type = adaptiveFormat.optString("type")
+                    if (type == "FORMAT_STREAM_TYPE_OTF") continue
+                    val itag = adaptiveFormat.getInt("itag")
+                    if (FORMAT_MAP[itag] != null) {
+                        if (adaptiveFormat.has("url")) {
+                            val url = adaptiveFormat.getString("url").replace("\\u0026", "&")
                             ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
-                            encSignatures.append(itag, signature)
+                        } else if (adaptiveFormat.has("signatureCipher")) {
+                            mat =
+                                patSigEncUrl.matcher(adaptiveFormat.getString("signatureCipher"))
+                            val matSig =
+                                patSignature.matcher(adaptiveFormat.getString("signatureCipher"))
+                            if (mat.find() && matSig.find()) {
+                                val url = URLDecoder.decode(mat.group(1), "UTF-8")
+                                val signature = URLDecoder.decode(matSig.group(1), "UTF-8")
+                                ytFiles.append(itag, YtFile(FORMAT_MAP[itag], url))
+                                encSignatures.append(itag, signature)
+                            }
                         }
                     }
                 }
             }
-            val videoDetails = ytPlayerResponse.getJSONObject("videoDetails")
-            videoMeta = VideoMeta(
-                videoDetails.getString("videoId"),
-                videoDetails.getString("title"),
-                videoDetails.getString("author"),
-                videoDetails.getString("channelId"),
-                videoDetails.getString("lengthSeconds").toLong(),
-                videoDetails.getString("viewCount").toLong(),
-                videoDetails.getBoolean("isLiveContent"),
-                videoDetails.getString("shortDescription")
-            )
+            val videoDetails = ytPlayerResponse?.getJSONObject("videoDetails")
+            if (videoDetails != null) {
+                videoMeta = VideoMeta(
+                    videoDetails.getString("videoId"),
+                    videoDetails.getString("title"),
+                    videoDetails.getString("author"),
+                    videoDetails.getString("channelId"),
+                    videoDetails.getString("lengthSeconds").toLong(),
+                    videoDetails.getString("viewCount").toLong(),
+                    videoDetails.getBoolean("isLiveContent"),
+                    videoDetails.getString("shortDescription")
+                )
+            }
         } else {
             Log.d(LOG_TAG, "ytPlayerResponse was not found")
         }
@@ -590,24 +598,6 @@ class YTExtractor(val con: Context) {
             }
         }
     }
-    fun deleteDir(dir: File?): Boolean {
-        return if (dir != null && dir.isDirectory) {
-            val children = dir.list()
-            if (children != null) {
-                for (i in children.indices) {
-                    val success = deleteDir(File(dir, children[i]))
-                    if (!success) {
-                        return false
-                    }
-                }
-            }
-            dir.delete()
-        } else if (dir != null && dir.isFile) {
-            dir.delete()
-        } else {
-            false
-        }
-    }
 
     /**
      * Extract data from YouTube videoId
@@ -616,36 +606,35 @@ class YTExtractor(val con: Context) {
      */
     @OptIn(DelicateCoroutinesApi::class)
     suspend fun extract(videoId: String) {
-        deleteDir(con.cacheDir)
-        cacheDirPath = null
-        cacheDirPath = con.cacheDir.absolutePath
-        ytFiles = scope.async {
-            state = State.LOADING
-            var mat = patYouTubePageLink.matcher(videoId)
-            if (mat.find()) {
-                videoID = mat.group(3)
-            } else {
-                mat = patYouTubeShortLink.matcher(videoId)
+        withContext(Dispatchers.IO) {
+            ytFiles = async {
+                state = State.LOADING
+                var mat = patYouTubePageLink.matcher(videoId)
                 if (mat.find()) {
                     videoID = mat.group(3)
-                } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
-                    videoID = videoId
+                } else {
+                    mat = patYouTubeShortLink.matcher(videoId)
+                    if (mat.find()) {
+                        videoID = mat.group(3)
+                    } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
+                        videoID = videoId
+                    }
                 }
-            }
-            if (videoID != null) {
-                try {
-                    state = State.SUCCESS
-                    return@async getStreamUrls()
-                } catch (e: java.lang.Exception) {
+                if (videoID != null) {
+                    try {
+                        state = State.SUCCESS
+                        return@async getStreamUrls()
+                    } catch (e: java.lang.Exception) {
+                        state = State.ERROR
+                        Log.e(LOG_TAG, "Extraction failed", e)
+                    }
+                } else {
                     state = State.ERROR
-                    Log.e(LOG_TAG, "Extraction failed", e)
+                    Log.e(LOG_TAG, "Wrong YouTube link format")
                 }
-            } else {
-                state = State.ERROR
-                Log.e(LOG_TAG, "Wrong YouTube link format")
-            }
-            return@async null
-        }.await()
+                return@async null
+            }.await()
+        }
     }
 
     /**
@@ -665,47 +654,6 @@ class YTExtractor(val con: Context) {
     fun getYTFiles(): SparseArray<YtFile>? {
         return ytFiles
     }
-}
-
-/**
- * @return a list (ArrayList) of audio only YtFile objects
- */
-fun SparseArray<YtFile>.getAudioOnly(): ArrayList<YtFile> {
-    val resultList: ArrayList<YtFile> = ArrayList()
-    val listAudioItag = listOf<Int>(171,249,250,251)
-    for (itag in listAudioItag) {
-        if (this[itag] != null) {
-            resultList.add(this[itag])
-        }
-    }
-    return resultList
-}
-/**
- * @return a list (ArrayList) of video YtFile objects
- */
-fun SparseArray<YtFile>.getVideoOnly(): ArrayList<YtFile> {
-    val resultList: ArrayList<YtFile> = ArrayList()
-    val listVideoItag = listOf<Int>(18,22,37,38,82,83,84,85,133,134,135,136,137,138,160,242,243,244,247,248,264,266,271,272,278,298,299,302,303,308,313,315,330,331,332,333,334,335,336,337,394,395,396,397,398,399,400,401,402,403,404,405,406,407,408,409,410)
-    for (itag in listVideoItag) {
-        if (this[itag] != null) {
-            resultList.add(this[itag])
-        }
-    }
-    return resultList
-}
-/**
- * Convert SparseArray to ArrayList
- * @return a list (ArrayList) of video and audio YtFile objects
- */
-fun <T> SparseArray<T>.values(): ArrayList<T> {
-    val list = ArrayList<T>()
-    forEach { _, value ->
-        list.add(value)
-    }
-    return list
-}
-fun ArrayList<YtFile>.bestQuality(): YtFile?{
-    return this.maxByOrNull { it.meta!!.audioBitrate }
 }
 
 

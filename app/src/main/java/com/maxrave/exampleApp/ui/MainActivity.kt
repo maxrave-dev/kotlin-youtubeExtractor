@@ -24,7 +24,7 @@ class MainActivity : AppCompatActivity() {
         //val videoId = "d40rzwlq8l4"
         val listVideoId = listOf<String>("d40rzwlq8l4", "Q2T8-q9fGSI", "UzvbmzVDCQ4", "aaMv6SJafPA")
         val tv = findViewById<TextView>(R.id.textView)
-        val yt = YTExtractor(this@MainActivity)
+        val yt = YTExtractor(con = this@MainActivity, CACHING = false, LOGGING = true)
         var text = ""
         GlobalScope.launch {
             listVideoId.forEach { videoId ->
