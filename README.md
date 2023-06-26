@@ -43,7 +43,7 @@ dependencies {
 ## How to use
 
 ### Using with Kotlin Coroutines
->From version 0.0.4, this library change extract method and add more feature method.
+>From version 0.0.3, this library change extract method and add more feature method.
 
 Before start please add Kotlin Coroutines to your project
 
