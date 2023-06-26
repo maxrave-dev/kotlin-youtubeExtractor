@@ -51,7 +51,8 @@ Call YTExtractor inside your activity or fragment
 ```kotlin
 //If your YouTube link is "https://www.youtube.com/watch?v=IDwytT0wFRM" so this videoId is "IDwytT0wFRM"
 var videoId = "IDwytT0wFRM"
-val yt = YTExtractor(context)
+val yt = YTExtractor(con = context, CACHING = true, LOGGING = true)
+// CACHING and LOGGING are 2 optional params. LOGGING is for showing Log and CACHING is for saving SignatureCipher to optimize extracting time (not recommend CACHING to extract multiple videos because it causes HTTP 403 Error)
 var ytFiles: SparseArray<YtFile>? = null
 var videoMeta: VideoMeta? = null
 GlobalScope.launch {
