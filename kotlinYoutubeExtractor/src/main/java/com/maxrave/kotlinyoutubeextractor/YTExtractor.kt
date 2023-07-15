@@ -5,16 +5,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.SparseArray
-import androidx.core.util.forEach
 import com.evgenii.jsevaluator.JsEvaluator
 import com.evgenii.jsevaluator.interfaces.JsCallback
-import kotlinx.coroutines.CoroutineName
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import org.json.JSONException
@@ -371,6 +365,25 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
         return ytFiles
     }
 
+    private fun testHttp403Code(url: String?): Boolean {
+        var urlConnection: HttpURLConnection? = null
+        try {
+            val urlObj = URL(url)
+            urlConnection = urlObj.openConnection() as HttpURLConnection
+            urlConnection.setRequestProperty("User-Agent", USER_AGENT)
+            urlConnection.connect()
+            val responseCode = urlConnection.responseCode
+            if (responseCode == 403) {
+                return true
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            urlConnection?.disconnect()
+        }
+        return false
+    }
+
     @Throws(IOException::class)
     private fun decipherSignature(encSignatures: SparseArray<String>): Boolean {
         // Assume the functions don't change that much
@@ -623,7 +636,22 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                 if (videoID != null) {
                     try {
                         state = State.SUCCESS
-                        return@async getStreamUrls()
+                        val temp = getStreamUrls()
+                        try {
+                            if (temp != null) {
+                                if (!testHttp403Code(temp.getAudioOnly().bestQuality()?.url)) {
+                                    if (LOGGING) Log.d(
+                                        LOG_TAG,
+                                        "NO Error"
+                                    )
+                                    return@async getStreamUrls()
+                                }
+                            }
+                        }
+                        catch (e: java.lang.Exception){
+                            state = State.ERROR
+                            Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error", e)
+                        }
                     } catch (e: java.lang.Exception) {
                         state = State.ERROR
                         Log.e(LOG_TAG, "Extraction failed", e)

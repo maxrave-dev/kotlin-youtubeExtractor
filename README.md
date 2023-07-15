@@ -36,7 +36,7 @@ Then, add dependencies in app level build.gradle:
 
 ```kotlin
 dependencies {
-    implementation 'com.github.maxrave-dev:kotlin-youtubeExtractor:0.0.4'
+    implementation 'com.github.maxrave-dev:kotlin-youtubeExtractor:0.0.5'
 }
 ```
 

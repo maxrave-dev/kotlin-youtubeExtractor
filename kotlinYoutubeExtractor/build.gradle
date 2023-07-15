@@ -4,15 +4,15 @@ plugins {
     id 'maven-publish'
 }
 group = 'com.github.maxrave-dev'
-version = '0.0.4'
+version = '0.0.5'
 
 android {
     namespace 'com.maxrave.kotlinyoutubeextractor'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -59,7 +59,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.maxrave-dev'
                 artifactId = 'kotlin-youtubeExtractor'
-                version = '0.0.4'
+                version = '0.0.5'
             }
         }
     }
