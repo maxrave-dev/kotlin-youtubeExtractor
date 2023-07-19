@@ -9,7 +9,7 @@ class VideoMeta(
      * The video length in seconds.
      */
     val videoLength: Long,
-    val viewCount: Long, val isLiveStream: Boolean, val shortDescription: String
+    val viewCount: Long, val isLiveStream: Boolean, val shortDescription: String?
 ) {
 
     // 120 x 90
@@ -49,6 +49,7 @@ class VideoMeta(
         var result = videoId?.hashCode() ?: 0
         result = 31 * result + (title?.hashCode() ?: 0)
         result = 31 * result + (author?.hashCode() ?: 0)
+        result = 31 * result + (shortDescription?.hashCode() ?: 0)
         result = 31 * result + (channelId?.hashCode() ?: 0)
         result = 31 * result + (videoLength xor (videoLength ushr 32)).toInt()
         result = 31 * result + (viewCount xor (viewCount ushr 32)).toInt()
@@ -61,6 +62,7 @@ class VideoMeta(
                 "videoId='" + videoId + '\'' +
                 ", title='" + title + '\'' +
                 ", author='" + author + '\'' +
+                ", shortDescription='" + shortDescription + '\'' +
                 ", channelId='" + channelId + '\'' +
                 ", videoLength=" + videoLength +
                 ", viewCount=" + viewCount +

@@ -38,7 +38,7 @@ import java.util.regex.Pattern
  * @param LOGGING Enable logging, default is false.
  */
 
-class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: Boolean = false) {
+class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: Boolean = false, val retryCount: Int = 1) {
     private val LOG_TAG = "Kotlin YouTube Extractor"
     private val CACHE_FILE_NAME = "decipher_js_funct"
 
@@ -295,6 +295,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
             }
             val videoDetails = ytPlayerResponse?.getJSONObject("videoDetails")
             if (videoDetails != null) {
+                Log.d(LOG_TAG, "videoDetails: $videoDetails")
                 videoMeta = VideoMeta(
                     videoDetails.getString("videoId"),
                     videoDetails.getString("title"),
@@ -622,43 +623,59 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
         withContext(Dispatchers.IO) {
             ytFiles = async {
                 state = State.LOADING
-                var mat = patYouTubePageLink.matcher(videoId)
-                if (mat.find()) {
-                    videoID = mat.group(3)
-                } else {
-                    mat = patYouTubeShortLink.matcher(videoId)
+                var retry: Int = 0
+                while (state != State.SUCCESS && retry < retryCount) {
+                    if (LOGGING) Log.d(
+                        LOG_TAG,
+                        "Retry: $retry"
+                    )
+                    var mat = patYouTubePageLink.matcher(videoId)
                     if (mat.find()) {
                         videoID = mat.group(3)
-                    } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
-                        videoID = videoId
+                    } else {
+                        mat = patYouTubeShortLink.matcher(videoId)
+                        if (mat.find()) {
+                            videoID = mat.group(3)
+                        } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
+                            videoID = videoId
+                        }
                     }
-                }
-                if (videoID != null) {
-                    try {
-                        state = State.SUCCESS
-                        val temp = getStreamUrls()
+                    if (videoID != null) {
                         try {
-                            if (temp != null) {
-                                if (!testHttp403Code(temp.getAudioOnly().bestQuality()?.url)) {
-                                    if (LOGGING) Log.d(
-                                        LOG_TAG,
-                                        "NO Error"
-                                    )
-                                    return@async getStreamUrls()
+                            val temp = getStreamUrls()
+                            try {
+                                if (temp != null) {
+                                    val test = testHttp403Code(temp.getAudioOnly().bestQuality()?.url)
+                                    if (!test) {
+                                        if (LOGGING) Log.d(
+                                            LOG_TAG,
+                                            "NO Error"
+                                        )
+                                        state = State.SUCCESS
+                                        return@async temp
+                                    }
+                                    else {
+                                        retry++
+                                        state = State.ERROR
+                                        Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error")
+                                    }
                                 }
                             }
-                        }
-                        catch (e: java.lang.Exception){
+                            catch (e: IOException){
+                                retry++
+                                state = State.ERROR
+                                Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error", e)
+                            }
+                        } catch (e: java.lang.Exception) {
+                            retry++
                             state = State.ERROR
-                            Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error", e)
+                            Log.e(LOG_TAG, "Extraction failed", e)
                         }
-                    } catch (e: java.lang.Exception) {
+                    } else {
+                        retry++
                         state = State.ERROR
-                        Log.e(LOG_TAG, "Extraction failed", e)
+                        Log.e(LOG_TAG, "Wrong YouTube link format")
                     }
-                } else {
-                    state = State.ERROR
-                    Log.e(LOG_TAG, "Wrong YouTube link format")
                 }
                 return@async null
             }.await()

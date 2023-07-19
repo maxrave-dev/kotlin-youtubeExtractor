@@ -36,7 +36,7 @@ Then, add dependencies in app level build.gradle:
 
 ```kotlin
 dependencies {
-    implementation 'com.github.maxrave-dev:kotlin-youtubeExtractor:0.0.5'
+    implementation 'com.github.maxrave-dev:kotlin-youtubeExtractor:0.0.6'
 }
 ```
 
@@ -51,8 +51,9 @@ Call YTExtractor inside your activity or fragment
 ```kotlin
 //If your YouTube link is "https://www.youtube.com/watch?v=IDwytT0wFRM" so this videoId is "IDwytT0wFRM"
 var videoId = "IDwytT0wFRM"
-val yt = YTExtractor(con = context, CACHING = true, LOGGING = true)
+val yt = YTExtractor(con = context, CACHING = true, LOGGING = true, retryCount = 3)
 // CACHING and LOGGING are 2 optional params. LOGGING is for showing Log and CACHING is for saving SignatureCipher to optimize extracting time (not recommend CACHING to extract multiple videos because it causes HTTP 403 Error)
+// retryCount is for retrying when extract fail (default is 1)
 var ytFiles: SparseArray<YtFile>? = null
 var videoMeta: VideoMeta? = null
 GlobalScope.launch {

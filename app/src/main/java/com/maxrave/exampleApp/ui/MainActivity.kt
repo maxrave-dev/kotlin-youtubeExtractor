@@ -22,16 +22,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         //val videoId = "d40rzwlq8l4"
-        val listVideoId = listOf<String>("d40rzwlq8l4", "Q2T8-q9fGSI", "UzvbmzVDCQ4", "aaMv6SJafPA")
+        val listVideoId = listOf<String>("d40rzwlq8l4", "Q2T8-q9fGSI", "UzvbmzVDCQ4", "aaMv6SJafPA", "JvOg0TSvdGU")
         val tv = findViewById<TextView>(R.id.textView)
-        val yt = YTExtractor(con = this@MainActivity, CACHING = false, LOGGING = true)
+        val yt = YTExtractor(con = this@MainActivity, CACHING = false, LOGGING = true, retryCount = 3)
         var text = ""
         GlobalScope.launch {
             listVideoId.forEach { videoId ->
                 yt.extract(videoId)
                 if (yt.state == State.SUCCESS) {
                     yt.getYTFiles().let { it ->
-                        var a = it?.get(251).let { data ->
+                        val a = it?.get(251).let { data ->
                             data?.url.toString()
                         }
                         text += a + "\n"
