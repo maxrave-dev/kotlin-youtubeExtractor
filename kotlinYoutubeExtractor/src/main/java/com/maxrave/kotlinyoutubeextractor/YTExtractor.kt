@@ -65,11 +65,6 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
         "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36"
     //Old User Agent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.98 Safari/537.36"
 
-    private val patYouTubePageLink =
-        Pattern.compile("(http|https)://(www\\.|m.|)youtube\\.com/watch\\?v=(.+?)( |\\z|&)")
-    private val patYouTubeShortLink =
-        Pattern.compile("(http|https)://(www\\.|)youtu.be/(.+?)( |\\z|&)")
-
     private val patPlayerResponse =
         Pattern.compile("var ytInitialPlayerResponse\\s*=\\s*(\\{.+?\\})\\s*;")
     private val patSigEncUrl = Pattern.compile("url=(.+?)(\\u0026|$)")
@@ -321,7 +316,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
             if (!mat.find()) mat =
                 patDecryptionJsFileWithoutSlash.matcher(pageHtml)
             if (mat.find()) {
-                curJsFileName = mat.group(0).replace("\\/", "/")
+                curJsFileName = mat.group(0)!!.replace("\\/", "/")
                 if (decipherJsFileName == null || decipherJsFileName != curJsFileName) {
                     decipherFunctions = null
                     decipherFunctionName = null
@@ -332,7 +327,6 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                 LOG_TAG,
                 "Decipher signatures: " + encSignatures.size() + ", videos: " + ytFiles.size()
             )
-            val signature: String?
             decipheredSignature = null
             if (decipherSignature(encSignatures)) {
                 lock.lock()
@@ -342,7 +336,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                     lock.unlock()
                 }
             }
-            signature = decipheredSignature
+            val signature: String? = decipheredSignature
             if (signature == null) {
                 return null
             } else {
@@ -417,7 +411,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                 decipherFunctionName = mat.group(1)
                 if (LOGGING) Log.d(
                     LOG_TAG,
-                    "Decipher Functname: " + decipherFunctionName
+                    "Decipher Functname: $decipherFunctionName"
                 )
                 val patMainVariable = Pattern.compile(
                     "(var |\\s|,|;)" + decipherFunctionName?.replace("$", "\\$") +
@@ -460,18 +454,18 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                         continue
                     }
                     startIndex = javascriptFile.indexOf(variableDef) + variableDef.length
-                    var braces = 1
-                    var i = startIndex
-                    while (i < javascriptFile.length) {
-                        if (braces == 0) {
+                    var bracesVariable = 1
+                    var i1 = startIndex
+                    while (i1 < javascriptFile.length) {
+                        if (bracesVariable == 0) {
                             decipherFunctions += variableDef + javascriptFile.substring(
                                 startIndex,
-                                i
+                                i1
                             ) + ";"
                             break
                         }
-                        if (javascriptFile[i] == '{') braces++ else if (javascriptFile[i] == '}') braces--
-                        i++
+                        if (javascriptFile[i1] == '{') bracesVariable++ else if (javascriptFile[i1] == '}') bracesVariable--
+                        i1++
                     }
                 }
                 // Search for functions
@@ -482,23 +476,23 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
                         continue
                     }
                     startIndex = javascriptFile.indexOf(functionDef) + functionDef.length
-                    var braces = 0
-                    var i = startIndex
-                    while (i < javascriptFile.length) {
-                        if (braces == 0 && startIndex + 5 < i) {
+                    var bracesFunction = 0
+                    var i2 = startIndex
+                    while (i2 < javascriptFile.length) {
+                        if (bracesFunction == 0 && startIndex + 5 < i2) {
                             decipherFunctions += functionDef + javascriptFile.substring(
                                 startIndex,
-                                i
+                                i2
                             ) + ";"
                             break
                         }
-                        if (javascriptFile[i] == '{') braces++ else if (javascriptFile[i] == '}') braces--
-                        i++
+                        if (javascriptFile[i2] == '{') bracesFunction++ else if (javascriptFile[i2] == '}') bracesFunction--
+                        i2++
                     }
                 }
                 if (LOGGING) Log.d(
                     LOG_TAG,
-                    "Decipher Function: " + decipherFunctions
+                    "Decipher Function: $decipherFunctions"
                 )
                 decipherViaWebView(encSignatures)
                 if (CACHING) {
@@ -514,7 +508,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
     }
 
     private fun readDecipherFunctFromCache() {
-        val cacheFile = File(cacheDirPath + "/" + CACHE_FILE_NAME)
+        val cacheFile = File("$cacheDirPath/$CACHE_FILE_NAME")
         // The cached functions are valid for 2 weeks
         if (cacheFile.exists() && System.currentTimeMillis() - cacheFile.lastModified() < 1209600000) {
             var reader: BufferedReader? = null
@@ -539,7 +533,7 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
 
     private fun decipherViaWebView(encSignatures: SparseArray<String>) {
         val context = refContext!!.get() ?: return
-        val stb = StringBuilder(decipherFunctions + " function decipher(")
+        val stb = StringBuilder("$decipherFunctions function decipher(")
         stb.append("){return ")
         for (i in 0 until encSignatures.size()) {
             val key = encSignatures.keyAt(i)
@@ -580,22 +574,20 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
         }
     }
 
-    fun setDefaultHttpProtocol(useHttp: Boolean) {}
-
     private fun writeDeciperFunctToChache() {
-        val cacheFile = File(cacheDirPath + "/" + CACHE_FILE_NAME)
+        val cacheFile = File("$cacheDirPath/$CACHE_FILE_NAME")
         var writer: BufferedWriter? = null
         try {
             writer = BufferedWriter(OutputStreamWriter(FileOutputStream(cacheFile), "UTF-8"))
             writer.write(
                 """
-                ${decipherJsFileName}
+                $decipherJsFileName
                 
                 """.trimIndent()
             )
             writer.write(
                 """
-                ${decipherFunctionName}
+                $decipherFunctionName
                 
                 """.trimIndent()
             )
@@ -623,58 +615,42 @@ class YTExtractor(val con: Context, val CACHING: Boolean = false, val LOGGING: B
         withContext(Dispatchers.IO) {
             ytFiles = async {
                 state = State.LOADING
-                var retry: Int = 0
+                var retry = 0
                 while (state != State.SUCCESS && retry < retryCount) {
                     if (LOGGING) Log.d(
                         LOG_TAG,
                         "Retry: $retry"
                     )
-                    var mat = patYouTubePageLink.matcher(videoId)
-                    if (mat.find()) {
-                        videoID = mat.group(3)
-                    } else {
-                        mat = patYouTubeShortLink.matcher(videoId)
-                        if (mat.find()) {
-                            videoID = mat.group(3)
-                        } else if (videoId.matches("\\p{Graph}+?".toRegex())) {
-                            videoID = videoId
-                        }
-                    }
-                    if (videoID != null) {
+                    videoID = videoId
+                    try {
+                        val temp = getStreamUrls()
                         try {
-                            val temp = getStreamUrls()
-                            try {
-                                if (temp != null) {
-                                    val test = testHttp403Code(temp.getAudioOnly().bestQuality()?.url)
-                                    if (!test) {
-                                        if (LOGGING) Log.d(
-                                            LOG_TAG,
-                                            "NO Error"
-                                        )
-                                        state = State.SUCCESS
-                                        return@async temp
-                                    }
-                                    else {
-                                        retry++
-                                        state = State.ERROR
-                                        Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error")
-                                    }
+                            if (temp != null) {
+                                val test = testHttp403Code(temp.getAudioOnly().bestQuality()?.url)
+                                if (!test) {
+                                    if (LOGGING) Log.d(
+                                        LOG_TAG,
+                                        "NO Error"
+                                    )
+                                    state = State.SUCCESS
+                                    return@async temp
+                                }
+                                else {
+                                    retry++
+                                    state = State.ERROR
+                                    Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error")
                                 }
                             }
-                            catch (e: IOException){
-                                retry++
-                                state = State.ERROR
-                                Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error", e)
-                            }
-                        } catch (e: java.lang.Exception) {
+                        }
+                        catch (e: IOException){
                             retry++
                             state = State.ERROR
-                            Log.e(LOG_TAG, "Extraction failed", e)
+                            Log.e(LOG_TAG, "Extraction failed cause 403 HTTP Error", e)
                         }
-                    } else {
+                    } catch (e: java.lang.Exception) {
                         retry++
                         state = State.ERROR
-                        Log.e(LOG_TAG, "Wrong YouTube link format")
+                        Log.e(LOG_TAG, "Extraction failed", e)
                     }
                 }
                 return@async null
